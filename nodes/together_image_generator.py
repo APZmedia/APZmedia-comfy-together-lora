@@ -71,6 +71,7 @@ class TogetherImageGenerator:
 
         try:
             response = requests.post(url, json=payload, headers=headers)
+            print("🔄 Full API Response:", response.text)  # Console log the full API response
 
             if response.status_code == 401:
                 print("❌ ERROR: Invalid API Key! Make sure it is correct.", flush=True)
@@ -78,7 +79,6 @@ class TogetherImageGenerator:
 
             if response.status_code != 200:
                 print(f"❌ ERROR: API request failed! Status: {response.status_code}")
-                print("Response Body:", response.text)
                 return self.placeholder_image(width, height)
 
             print("✅ Image generated successfully! Processing output...", flush=True)
@@ -86,8 +86,7 @@ class TogetherImageGenerator:
             # ✅ Extract image URL from response
             data = response.json()
             if "data" not in data or not data["data"]:
-                print("❌ ERROR: API response is missing 'data' field.")
-                print("Response Body:", response.text)
+                print("❌ ERROR: API response is missing 'data' field.", flush=True)
                 return self.placeholder_image(width, height)
 
             image_url = data["data"][0]["url"]
@@ -96,19 +95,17 @@ class TogetherImageGenerator:
             # ✅ Download the image
             img_response = requests.get(image_url)
             if img_response.status_code != 200:
-                print(f"❌ ERROR: Failed to download image from {image_url}")
+                print(f"❌ ERROR: Failed to download image from {image_url}", flush=True)
                 return self.placeholder_image(width, height)
 
             img = Image.open(io.BytesIO(img_response.content)).convert("RGB")
 
-            # ✅ Fix: Ensure Image is RGB and (3, H, W)
-            img_np = np.array(img, dtype=np.float32) / 255.0  # Normalize [0,1]
-
-            if img_np.shape[-1] == 1:  # If grayscale, convert to RGB
-                img_np = np.concatenate([img_np] * 3, axis=-1)
-
-            img_np = np.moveaxis(img_np, -1, 0)  # Convert (H, W, 3) → (3, H, W)
-            img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)  # Convert to PyTorch tensor [1, 3, H, W]
+            # ✅ Ensure Image is in (3, H, W) format
+            img_np = np.array(img, dtype=np.float32) / 255.0  # Normalize to [0,1]
+            if img_np.ndim == 2:  # if grayscale, convert to RGB
+                img_np = np.stack([img_np] * 3, axis=-1)
+            img_np = np.moveaxis(img_np, -1, 0)  # Convert (H, W, 3) to (3, H, W)
+            img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)  # [1, 3, H, W]
 
             print("✅ Image processing complete! Returning image.", flush=True)
             return (img_tensor,)
@@ -123,11 +120,8 @@ class TogetherImageGenerator:
         """
         img = Image.new("RGB", (width, height), color=(255, 0, 0))  # Red background
         img_np = np.array(img, dtype=np.float32) / 255.0
-
-        # ✅ Fix: Ensure correct shape
-        img_np = np.moveaxis(img_np, -1, 0)  # (H, W, 3) → (3, H, W)
-        img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)  # Convert to PyTorch Tensor [1, 3, H, W]
-
+        img_np = np.moveaxis(img_np, -1, 0)  # (H, W, 3) -> (3, H, W)
+        img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)
         return (img_tensor,)
 
 
