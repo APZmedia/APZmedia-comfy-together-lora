@@ -13,6 +13,8 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 import config
+import importlib
+importlib.reload(config)
 
 TOGETHER_API_KEY = config.TOGETHER_API_KEY
 if not TOGETHER_API_KEY:
