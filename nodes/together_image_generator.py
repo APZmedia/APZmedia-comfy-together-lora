@@ -31,9 +31,9 @@ class TogetherImageGenerator:
             "required": {
                 "prompt": ("STRING", {"multiline": True, "default": "An astronaut riding a horse on Mars"}),
                 "model": ("STRING", {"default": "black-forest-labs/FLUX.1-schnell-Free"}),
-                "width": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 64}),
-                "height": ("INT", {"default": 768, "min": 256, "max": 2048, "step": 64}),
-                "steps": ("INT", {"default": 28, "min": 1, "max": 100, "step": 1}),
+                "width": ("INT", {"default": 1024, "min": 256, "max": 1440, "step": 64}),
+                "height": ("INT", {"default": 768, "min": 256, "max": 1400, "step": 64}),
+                "steps": ("INT", {"default": 4, "min": 1, "max": 4, "step": 1}),
             }
         }
 
