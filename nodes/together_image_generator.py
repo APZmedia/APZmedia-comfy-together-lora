@@ -24,15 +24,13 @@ else:
     print("❌ Error: API key is missing or .env file is not loading!", flush=True)
     sys.exit(1)
 
-# Explicitly set API Key for Together API
-Together.api_key = TOGETHER_API_KEY  # ✅ Correct API key assignment
-
+# ✅ Fix: Pass API Key explicitly when creating Together client
 class TogetherImageGenerator:
     CATEGORY = "Together API"
 
     def __init__(self):
         print("🔄 Initializing TogetherImageGenerator node...", flush=True)
-        self.client = Together()  # ✅ Corrected client initialization
+        self.client = Together(api_key=TOGETHER_API_KEY)  # ✅ Fix: Pass API Key here
         print("✅ Together API client initialized successfully!", flush=True)
 
     @classmethod
@@ -48,7 +46,7 @@ class TogetherImageGenerator:
         }
 
     RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("image",)  # ✅ Fix missing return name
+    RETURN_NAMES = ("image",)
     FUNCTION = "generate_image"
 
     def generate_image(self, prompt, model, width, height, steps):
