@@ -3,26 +3,26 @@ import io
 import os
 import sys
 import requests
+import torch  # ✅ Import PyTorch
 from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
 
-# ✅ Load .env from the correct location
-NODE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get current file's directory
-ENV_PATH = os.path.join(NODE_DIR, "..", ".env")  # Adjust if needed
+# ✅ Dynamically locate the project's root directory (where .env is)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+ENV_PATH = os.path.join(ROOT_DIR, ".env")
 
 print(f"📂 Loading .env from: {ENV_PATH}", flush=True)
 load_dotenv(ENV_PATH)
 
-# ✅ Fetch API Key securely & strip whitespace
+# ✅ Fetch API Key
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "").strip()
 
-# ✅ Validate API Key before proceeding
 if not TOGETHER_API_KEY:
-    print("❌ ERROR: API key is missing or not loaded from .env! Make sure the .env file exists and contains TOGETHER_API_KEY.", flush=True)
+    print("❌ ERROR: API key is missing or incorrect! Check your .env file.", flush=True)
     sys.exit(1)
 
-# ✅ Debugging: Print first 5 chars of the API key for verification
 print(f"🔍 Debug: TOGETHER_API_KEY (first 5 chars) = {TOGETHER_API_KEY[:5]}...", flush=True)
 
 
@@ -72,10 +72,14 @@ class TogetherImageGenerator:
         try:
             response = requests.post(url, json=payload, headers=headers)
 
+            if response.status_code == 401:
+                print("❌ ERROR: Invalid API Key! Make sure it is correct.", flush=True)
+                return self.placeholder_image(width, height)
+
             if response.status_code != 200:
                 print(f"❌ ERROR: API request failed! Status: {response.status_code}")
                 print("Response Body:", response.text)
-                return None  # ✅ Ensure that an explicit failure response is given
+                return self.placeholder_image(width, height)
 
             print("✅ Image generated successfully! Processing output...", flush=True)
 
@@ -84,7 +88,7 @@ class TogetherImageGenerator:
             if "data" not in data or not data["data"]:
                 print("❌ ERROR: API response is missing 'data' field.")
                 print("Response Body:", response.text)
-                return None
+                return self.placeholder_image(width, height)
 
             image_url = data["data"][0]["url"]
             print(f"🔗 Image URL: {image_url}", flush=True)
@@ -93,18 +97,32 @@ class TogetherImageGenerator:
             img_response = requests.get(image_url)
             if img_response.status_code != 200:
                 print(f"❌ ERROR: Failed to download image from {image_url}")
-                return None
+                return self.placeholder_image(width, height)
 
-            img = Image.open(io.BytesIO(img_response.content))
-            img = img.convert("RGB")
-            img_np = np.array(img) / 255.0
+            img = Image.open(io.BytesIO(img_response.content)).convert("RGB")
+
+            # ✅ Ensure the image is the correct shape for ComfyUI: (3, H, W)
+            img_np = np.array(img, dtype=np.float32) / 255.0  # Normalize [0,1]
+            img_tensor = torch.tensor(img_np).permute(2, 0, 1).unsqueeze(0)  # [1, 3, H, W]
 
             print("✅ Image processing complete! Returning image.", flush=True)
-            return (img_np,)
+            return (img_tensor,)
 
         except Exception as e:
             print(f"❌ API Error: {e}", flush=True)
-            return None  # ✅ Explicitly return None in case of error
+            return self.placeholder_image(width, height)
+
+    def placeholder_image(self, width, height):
+        """
+        Generate a blank placeholder image with error text.
+        """
+        img = Image.new("RGB", (width, height), color=(255, 0, 0))  # Red background
+        img_np = np.array(img, dtype=np.float32) / 255.0
+
+        # ✅ Convert to PyTorch Tensor for ComfyUI
+        img_tensor = torch.tensor(img_np).permute(2, 0, 1).unsqueeze(0)  # [1, 3, H, W]
+
+        return (img_tensor,)
 
 
 # ✅ Register the node in ComfyUI
