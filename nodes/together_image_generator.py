@@ -1,44 +1,44 @@
-from together import Together
 import base64
 import io
 import os
 import sys
+import requests
 from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
 
-# Load .env from the custom node directory
+# ✅ Load .env from the correct location
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get current file's directory
-ENV_PATH = os.path.join(NODE_DIR, "..", ".env")  # Adjust this if needed
+ENV_PATH = os.path.join(NODE_DIR, "..", ".env")  # Adjust if needed
 
-print(f"📂 Loading .env from: {ENV_PATH}", flush=True)  # Debug print
+print(f"📂 Loading .env from: {ENV_PATH}", flush=True)
 load_dotenv(ENV_PATH)
 
-# Fetch API Key securely
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+# ✅ Fetch API Key securely & strip whitespace
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "").strip()
 
-# Debugging: Print API Key (Only first 5 chars for security)
-if TOGETHER_API_KEY:
-    print(f"🔍 Debug: TOGETHER_API_KEY (before initialization) = {TOGETHER_API_KEY[:5]}...", flush=True)
-else:
-    print("❌ Error: API key is missing or .env file is not loading!", flush=True)
+# ✅ Validate API Key before proceeding
+if not TOGETHER_API_KEY:
+    print("❌ ERROR: API key is missing or not loaded from .env! Make sure the .env file exists and contains TOGETHER_API_KEY.", flush=True)
     sys.exit(1)
 
-# ✅ Fix: Pass API Key explicitly when creating Together client
+# ✅ Debugging: Print first 5 chars of the API key for verification
+print(f"🔍 Debug: TOGETHER_API_KEY (first 5 chars) = {TOGETHER_API_KEY[:5]}...", flush=True)
+
+
 class TogetherImageGenerator:
     CATEGORY = "Together API"
 
     def __init__(self):
         print("🔄 Initializing TogetherImageGenerator node...", flush=True)
-        self.client = Together(api_key=TOGETHER_API_KEY)  # ✅ Fix: Pass API Key here
-        print("✅ Together API client initialized successfully!", flush=True)
+        print("✅ API will use direct requests method!", flush=True)
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "prompt": ("STRING", {"multiline": True, "default": "An astronaut riding a horse on Mars"}),
-                "model": ("STRING", {"default": "black-forest-labs/FLUX.1-schnell"}),
+                "model": ("STRING", {"default": "black-forest-labs/FLUX.1-schnell-Free"}),
                 "width": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 64}),
                 "height": ("INT", {"default": 768, "min": 256, "max": 2048, "step": 64}),
                 "steps": ("INT", {"default": 28, "min": 1, "max": 100, "step": 1}),
@@ -51,38 +51,63 @@ class TogetherImageGenerator:
 
     def generate_image(self, prompt, model, width, height, steps):
         print("🔄 Generating image using Together API...", flush=True)
-        
-        print(f"📤 Debug: API Key being used in request = {TOGETHER_API_KEY[:5]}...", flush=True)
-        print("📤 Sending request to Together API...", flush=True)
-        try:
-            response = self.client.images.generate(
-                prompt=prompt,
-                model=model,
-                width=width,
-                height=height,
-                steps=steps,
-                n=1,
-                response_format="b64_json"
-            )
 
-            if not hasattr(response, "data") or not response.data:
-                raise ValueError("❌ Error: API response is empty or incorrect!")
+        url = "https://api.together.xyz/v1/images/generations"
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {TOGETHER_API_KEY}",
+        }
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "steps": steps,
+            "n": 1,
+            "height": height,
+            "width": width,
+            "guidance": 3.5,
+            "output_format": "jpeg"
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+
+            if response.status_code != 200:
+                print(f"❌ ERROR: API request failed! Status: {response.status_code}")
+                print("Response Body:", response.text)
+                return None  # ✅ Ensure that an explicit failure response is given
 
             print("✅ Image generated successfully! Processing output...", flush=True)
 
-            image_data = response.data[0].b64_json
-            img_bytes = base64.b64decode(image_data)
-            img = Image.open(io.BytesIO(img_bytes))
+            # ✅ Extract image URL from response
+            data = response.json()
+            if "data" not in data or not data["data"]:
+                print("❌ ERROR: API response is missing 'data' field.")
+                print("Response Body:", response.text)
+                return None
+
+            image_url = data["data"][0]["url"]
+            print(f"🔗 Image URL: {image_url}", flush=True)
+
+            # ✅ Download the image
+            img_response = requests.get(image_url)
+            if img_response.status_code != 200:
+                print(f"❌ ERROR: Failed to download image from {image_url}")
+                return None
+
+            img = Image.open(io.BytesIO(img_response.content))
             img = img.convert("RGB")
             img_np = np.array(img) / 255.0
-            print("✅ Image processing complete! Returning image.", flush=True)
 
+            print("✅ Image processing complete! Returning image.", flush=True)
             return (img_np,)
 
         except Exception as e:
             print(f"❌ API Error: {e}", flush=True)
-            raise
+            return None  # ✅ Explicitly return None in case of error
 
+
+# ✅ Register the node in ComfyUI
 NODE_CLASS_MAPPINGS = {
     "TogetherImageGenerator": TogetherImageGenerator,
 }
@@ -91,4 +116,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TogetherImageGenerator": "Together Image Generator",
 }
 
-print("✅ TogetherImageGenerator node successfully loaded!", flush=True)
+print("✅ TogetherImageGenerator node successfully loaded using requests!", flush=True)
