@@ -6,7 +6,7 @@ import numpy as np
 
 class TogetherImageGeneratorLoRA:
     def __init__(self):
-        self.client = Together()
+        self.client = Together(api_key=TOGETHER_API_KEY)
 
     @classmethod
     def INPUT_TYPES(cls):

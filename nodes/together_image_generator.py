@@ -14,41 +14,27 @@ load_dotenv(env_path)
 # Fetch API Key securely
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 
-# Debugging: Print the API key (only first 5 chars for security)
+# Debugging: Print API Key
 if TOGETHER_API_KEY:
-    print(f"🔍 Debug: TOGETHER_API_KEY = {TOGETHER_API_KEY[:5]}...", flush=True)
+    print(f"🔍 Debug: TOGETHER_API_KEY (before initialization) = {TOGETHER_API_KEY}", flush=True)
 else:
     print("❌ Error: API key is missing or .env file is not loading!", flush=True)
     sys.exit(1)
 
-# Set API Key in the Together client
-Together.api_key = TOGETHER_API_KEY  # ✅ Correct API key assignment
-
 class TogetherImageGenerator:
     def __init__(self):
         print("🔄 Initializing TogetherImageGenerator node...", flush=True)
-        self.client = Together()  # ✅ Corrected client initialization
+
+        # ✅ Explicitly set API key when creating client
+        self.client = Together(api_key=TOGETHER_API_KEY)  
+
         print("✅ Together API client initialized successfully!", flush=True)
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "prompt": ("STRING", {"multiline": True, "default": "An astronaut riding a horse on Mars"}),
-                "model": ("STRING", {"default": "black-forest-labs/FLUX.1-schnell"}),
-                "width": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 64}),
-                "height": ("INT", {"default": 768, "min": 256, "max": 2048, "step": 64}),
-                "steps": ("INT", {"default": 28, "min": 1, "max": 100, "step": 1}),
-            },
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "generate_image"
-    CATEGORY = "Together API"
 
     def generate_image(self, prompt, model, width, height, steps):
         print("🔄 Generating image using Together API...", flush=True)
-        
+
+        print(f"📤 Debug: API Key being used in request = {TOGETHER_API_KEY}", flush=True)
+
         print("📤 Sending request to Together API...", flush=True)
         try:
             response = self.client.images.generate(
@@ -74,13 +60,3 @@ class TogetherImageGenerator:
         except Exception as e:
             print(f"❌ API Error: {e}", flush=True)
             raise
-
-NODE_CLASS_MAPPINGS = {
-    "TogetherImageGenerator": TogetherImageGenerator,
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "TogetherImageGenerator": "Together Image Generator",
-}
-
-print("✅ TogetherImageGenerator node successfully loaded!", flush=True)
