@@ -101,14 +101,14 @@ class TogetherImageGenerator:
 
             img = Image.open(io.BytesIO(img_response.content)).convert("RGB")
 
-            # ✅ Fix: Ensure the image is (3, H, W) and correct dtype
+            # ✅ Fix: Ensure Image is RGB and (3, H, W)
             img_np = np.array(img, dtype=np.float32) / 255.0  # Normalize [0,1]
 
-            if len(img_np.shape) == 2:  # If grayscale, convert to RGB
-                img_np = np.stack([img_np] * 3, axis=-1)
+            if img_np.shape[-1] == 1:  # If grayscale, convert to RGB
+                img_np = np.concatenate([img_np] * 3, axis=-1)
 
             img_np = np.moveaxis(img_np, -1, 0)  # Convert (H, W, 3) → (3, H, W)
-            img_tensor = torch.tensor(img_np).unsqueeze(0)  # Convert to PyTorch tensor [1, 3, H, W]
+            img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)  # Convert to PyTorch tensor [1, 3, H, W]
 
             print("✅ Image processing complete! Returning image.", flush=True)
             return (img_tensor,)
@@ -126,7 +126,7 @@ class TogetherImageGenerator:
 
         # ✅ Fix: Ensure correct shape
         img_np = np.moveaxis(img_np, -1, 0)  # (H, W, 3) → (3, H, W)
-        img_tensor = torch.tensor(img_np).unsqueeze(0)  # Convert to PyTorch Tensor [1, 3, H, W]
+        img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)  # Convert to PyTorch Tensor [1, 3, H, W]
 
         return (img_tensor,)
 
