@@ -101,9 +101,14 @@ class TogetherImageGenerator:
 
             img = Image.open(io.BytesIO(img_response.content)).convert("RGB")
 
-            # ✅ Ensure the image is the correct shape for ComfyUI: (3, H, W)
+            # ✅ Fix: Ensure the image is (3, H, W) and correct dtype
             img_np = np.array(img, dtype=np.float32) / 255.0  # Normalize [0,1]
-            img_tensor = torch.tensor(img_np).permute(2, 0, 1).unsqueeze(0)  # [1, 3, H, W]
+
+            if len(img_np.shape) == 2:  # If grayscale, convert to RGB
+                img_np = np.stack([img_np] * 3, axis=-1)
+
+            img_np = np.moveaxis(img_np, -1, 0)  # Convert (H, W, 3) → (3, H, W)
+            img_tensor = torch.tensor(img_np).unsqueeze(0)  # Convert to PyTorch tensor [1, 3, H, W]
 
             print("✅ Image processing complete! Returning image.", flush=True)
             return (img_tensor,)
@@ -119,8 +124,9 @@ class TogetherImageGenerator:
         img = Image.new("RGB", (width, height), color=(255, 0, 0))  # Red background
         img_np = np.array(img, dtype=np.float32) / 255.0
 
-        # ✅ Convert to PyTorch Tensor for ComfyUI
-        img_tensor = torch.tensor(img_np).permute(2, 0, 1).unsqueeze(0)  # [1, 3, H, W]
+        # ✅ Fix: Ensure correct shape
+        img_np = np.moveaxis(img_np, -1, 0)  # (H, W, 3) → (3, H, W)
+        img_tensor = torch.tensor(img_np).unsqueeze(0)  # Convert to PyTorch Tensor [1, 3, H, W]
 
         return (img_tensor,)
 
