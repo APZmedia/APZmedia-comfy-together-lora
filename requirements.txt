@@ -1,3 +1,4 @@
 together
 numpy
 Pillow
+dotenv
