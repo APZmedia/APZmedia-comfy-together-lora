@@ -7,30 +7,28 @@ import torch  # Import PyTorch
 from PIL import Image
 import numpy as np
 
-# Append the root directory (one level up) to sys.path so we can import config
+# Append the root directory (one level up) to sys.path to import config.py
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-# Now import the config module
 import config
 
 # Use the API key from config.py
 TOGETHER_API_KEY = config.TOGETHER_API_KEY
 if not TOGETHER_API_KEY:
-    print("❌ ERROR: API key is missing in config.py! Check your .env file in the root directory.", flush=True)
-    sys.exit(1)
-print(f"🔍 Debug: TOGETHER_API_KEY (first 5 chars) = {TOGETHER_API_KEY[:5]}...", flush=True)
-
+    sys.exit("❌ ERROR: API key is missing in config.py! Check your .env file in the root directory.")
+print("API key loaded successfully.")
 
 class TogetherImageGenerator:
     CATEGORY = "Together API"
 
     def __init__(self):
-        print("🔄 Initializing TogetherImageGenerator node...", flush=True)
-        print("✅ API will use direct requests method!", flush=True)
-
+        print("Initializing TogetherImageGenerator node...")
+        # Use the API key from the imported config
+        # (If you prefer, you can pass it explicitly to your API client here.)
+    
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -48,7 +46,7 @@ class TogetherImageGenerator:
     FUNCTION = "generate_image"
 
     def generate_image(self, prompt, model, width, height, steps):
-        print("🔄 Generating image using Together API...", flush=True)
+        print("Generating image using Together API...")
 
         url = "https://api.together.xyz/v1/images/generations"
         headers = {
@@ -69,53 +67,40 @@ class TogetherImageGenerator:
 
         try:
             response = requests.post(url, json=payload, headers=headers)
-            print("🔄 Full API Response:", response.text)  # Log the full API response
-
-            if response.status_code == 401:
-                print("❌ ERROR: Invalid API Key! Make sure it is correct.", flush=True)
-                return self.placeholder_image(width, height)
             if response.status_code != 200:
-                print(f"❌ ERROR: API request failed! Status: {response.status_code}", flush=True)
+                print("API request failed:", response.text)
                 return self.placeholder_image(width, height)
 
-            print("✅ Image generated successfully! Processing output...", flush=True)
             data = response.json()
             if "data" not in data or not data["data"]:
-                print("❌ ERROR: API response is missing 'data' field.", flush=True)
+                print("API response missing 'data' field.")
                 return self.placeholder_image(width, height)
 
             image_url = data["data"][0]["url"]
-            print(f"🔗 Image URL: {image_url}", flush=True)
+            print("Image URL:", image_url)
 
             img_response = requests.get(image_url)
             if img_response.status_code != 200:
-                print(f"❌ ERROR: Failed to download image from {image_url}", flush=True)
+                print("Failed to download image from", image_url)
                 return self.placeholder_image(width, height)
 
             img = Image.open(io.BytesIO(img_response.content)).convert("RGB")
+            # Process image: convert to NumPy array (H, W, 3) then to uint8 format
             img_np = np.array(img, dtype=np.float32) / 255.0
-            if img_np.ndim == 2:  # if grayscale, convert to RGB
-                img_np = np.stack([img_np] * 3, axis=-1)
-            img_np = np.moveaxis(img_np, -1, 0)  # (H, W, 3) -> (3, H, W)
-            img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)  # [1, 3, H, W]
-
-            print("✅ Image processing complete! Returning image.", flush=True)
-            return (img_tensor,)
+            img_np_uint8 = (img_np * 255).clip(0, 255).astype(np.uint8)
+            print("Image processed successfully.")
+            return (img_np_uint8,)
 
         except Exception as e:
-            print(f"❌ API Error: {e}", flush=True)
+            print("API Error:", e)
             return self.placeholder_image(width, height)
 
     def placeholder_image(self, width, height):
-        """
-        Generate a blank placeholder image with a red background.
-        """
+        # Create a red placeholder image (H, W, 3) in uint8 format
         img = Image.new("RGB", (width, height), color=(255, 0, 0))
         img_np = np.array(img, dtype=np.float32) / 255.0
-        img_np = np.moveaxis(img_np, -1, 0)  # (H, W, 3) -> (3, H, W)
-        img_tensor = torch.tensor(img_np, dtype=torch.float32).unsqueeze(0)
-        return (img_tensor,)
-
+        img_np_uint8 = (img_np * 255).clip(0, 255).astype(np.uint8)
+        return (img_np_uint8,)
 
 # Register the node in ComfyUI
 NODE_CLASS_MAPPINGS = {
@@ -126,4 +111,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TogetherImageGenerator": "Together Image Generator",
 }
 
-print("✅ TogetherImageGenerator node successfully loaded using requests!", flush=True)
+print("TogetherImageGenerator node successfully loaded!")
