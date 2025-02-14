@@ -1,13 +1,22 @@
 from together import Together
 import base64
 import io
+import os
+from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
+
+# Load environment variables
+load_dotenv()
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+
+if not TOGETHER_API_KEY:
+    raise ValueError("❌ Error: API Key not found! Ensure TOGETHER_API_KEY is set in .env.")
 
 class TogetherImageGenerator:
     def __init__(self):
         print("🔄 Initializing TogetherImageGenerator node...")
-        self.client = Together()
+        self.client = Together(api_key=TOGETHER_API_KEY)  # Secure API key usage
         print("✅ Together API client initialized successfully!")
 
     @classmethod
