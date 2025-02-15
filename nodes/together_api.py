@@ -1,18 +1,21 @@
+# File: /nodes/together_api.py
+
 import requests
-from config import TOGETHER_API_KEY
+import config  # normal import, no reload
+# from config import TOGETHER_API_KEY  # Alternatively, import directly
 
 def fetch_image_from_together(prompt, model, width, height, steps):
     """
     Sends a request to Together API to generate an image.
     Returns the image URL if successful, or None if an error occurs.
     """
-    if not TOGETHER_API_KEY:
+    if not config.TOGETHER_API_KEY:
         print("❌ ERROR: Missing API key. Cannot proceed with API call.")
         return None
 
     url = "https://api.together.xyz/v1/images/generations"
     headers = {
-        "Authorization": f"Bearer {TOGETHER_API_KEY}",
+        "Authorization": f"Bearer {config.TOGETHER_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
