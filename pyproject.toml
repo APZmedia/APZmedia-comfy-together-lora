@@ -1,0 +1,15 @@
+[project]
+name = "apzmedia-comfy-together-lora"
+description = "A ComfyUI node to implement Together AI API image generation"
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["together", "numpy", "Pillow", "python-dotenv"]
+
+[project.urls]
+Repository = "https://github.com/APZmedia/APZmedia-comfy-together-lora"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "APZmedia-comfy-together-lora"
+Icon = ""
