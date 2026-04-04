@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apzmedia-comfy-together-lora"
+version = "0.1.0"
+description = "ComfyUI custom node for Together AI API image generation with LoRA support"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Pablo Apiolazza", email = "info@apzmedia.com"}
+]
+maintainers = [
+    {name = "Pablo Apiolazza", email = "info@apzmedia.com"}
+]
+keywords = ["comfyui", "together-ai", "lora", "image-generation", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "together",
+    "numpy",
+    "Pillow",
+    "python-dotenv",
+]
+
+[project.urls]
+Homepage = "https://github.com/APZmedia/APZmedia-comfy-together-lora"
+Repository = "https://github.com/APZmedia/APZmedia-comfy-together-lora"
+Issues = "https://github.com/APZmedia/APZmedia-comfy-together-lora/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nodes*"]
+
+[tool.comfy]
+PublisherId = "APZmedia"
+DisplayName = "APZmedia Together LoRA"
+Icon = ""
